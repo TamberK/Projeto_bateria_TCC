@@ -4,7 +4,9 @@ import math
 import random
 import serial
 from menu import menu
+from desempenho import tela_desempenho
 from scores import salvar_score, carregar_scores
+
 
 pygame.init()
 
@@ -28,6 +30,30 @@ clock = pygame.time.Clock()
 # FONTES
 fonte = pygame.font.SysFont("arial",26, bold=True)
 fonte_titulo = pygame.font.SysFont("arial",70, bold=True)
+
+# DESEMPENHO
+desempenho = []
+
+acertos_perfeitos = 0
+cedo = 0
+tarde = 0
+erros_tempo = 0
+
+# DADOS TEMPORAIS DOS INSTRUMENTOS
+dados_tempo = {
+    "A": [],
+    "D": [],
+    "G": [],
+    "K": []
+}
+
+def avaliar_tempo(diferenca):
+    if abs(diferenca) <= 15:
+        return "PERFEITO"
+    elif diferenca < -15:
+        return "CEDO"
+    else:
+        return "TARDE"
 
 #ESCOLHER MODO
 def escolher_modo():
@@ -121,14 +147,15 @@ contador = 0
 
 game_over_flag = False
 
-# NOTA ALEATÓRIA
+# CRIAR NOTA
 def criar_nota():
     inst = random.choice(list(CORES.keys()))
     notas.append({
         "inst":inst,
         "x":LARGURA,
         "y":Y_POS[inst],
-        "status": "normal"
+        "status": "normal",
+        "tempo_alvo": pygame.time.get_ticks() + (LARGURA - LINHA_EXEC) / velocidade * 16
     })
 
 # DESENHAR NOTA
@@ -138,7 +165,7 @@ def desenhar_nota(x,y,inst,status):
     elif status == "erro":
         cor = (255,70,70)
     else:
-        cor = CORES[inst]
+        cor = CORES[inst]  
 
     pygame.draw.circle(tela, cor, (int(x),int(y)), 11)
 
@@ -231,50 +258,106 @@ def desenhar_feedback():
 
         # texto principal
         tela.blit(texto, (x,y))
-#TELA FINAL
+                       
 def tela_final():
+
     tempo = 0
     anim_tempo = 0
 
     while True:
+
         clock.tick(60)
+
         fundo()
 
         tempo += 0.05
         anim_tempo += 1
 
         for evento in pygame.event.get():
+
             if evento.type == pygame.QUIT:
                 pygame.quit()
                 sys.exit()
 
             if evento.type == pygame.KEYDOWN:
+
+                # REINICIAR
                 if evento.key == pygame.K_r:
                     return "reiniciar"
+
+                # ABRIR DESEMPENHO
+                if evento.key == pygame.K_t:
+
+                    tela_desempenho(
+                    tela,
+                    clock,
+                    fonte,
+                    fonte_titulo,
+                    LARGURA,
+                    ALTURA,
+                    acertos_perfeitos,
+                    cedo,
+                    tarde,
+                    erros_tempo,
+                    dados_tempo
+                )
+                # SAIR
                 if evento.key == pygame.K_ESCAPE:
                     pygame.quit()
                     sys.exit()
 
+        # =========================
         # BARRA SUPERIOR
-        barra = pygame.Surface((LARGURA,90), pygame.SRCALPHA)
-        barra.fill((15,15,25,220))
-        tela.blit(barra,(0,0))
-        pygame.draw.line(tela,(60,60,90),(0,90),(LARGURA,90),2)
+        # =========================
 
-        # FUNÇÃO DE TEXTO ESTILIZADO (igual menu)
-        def texto_estilizado(txt, fonte, cor, borda, sombra, x, y):
+        barra = pygame.Surface((LARGURA,90), pygame.SRCALPHA)
+
+        barra.fill((15,15,25,220))
+
+        tela.blit(barra,(0,0))
+
+        pygame.draw.line(
+            tela,
+            (60,60,90),
+            (0,90),
+            (LARGURA,90),
+            2
+        )
+
+        # =========================
+        # TEXTO ESTILIZADO
+        # =========================
+
+        def texto_estilizado(
+            txt,
+            fonte,
+            cor,
+            borda,
+            sombra,
+            x,
+            y
+        ):
+
             render = fonte.render(txt, True, cor)
+
             borda_render = fonte.render(txt, True, borda)
+
             sombra_render = fonte.render(txt, True, sombra)
 
             tela.blit(sombra_render, (x+4, y+4))
             tela.blit(borda_render, (x+2, y+2))
             tela.blit(render, (x, y))
 
-        # TÍTULO COM ANIMAÇÃO (igual menu)
+        # =========================
+        # TÍTULO
+        # =========================
+
         deslocamento_y = int(math.sin(tempo) * 8)
+
         titulo = "GAME OVER"
+
         largura = fonte_titulo.size(titulo)[0]
+
         x_titulo = (LARGURA - largura) // 2
 
         texto_estilizado(
@@ -287,7 +370,10 @@ def tela_final():
             90 + deslocamento_y
         )
 
-        # INFORMAÇÕES DO JOGADOR
+        # =========================
+        # DADOS
+        # =========================
+
         centro_x = LARGURA // 2
 
         texto_estilizado(
@@ -310,7 +396,10 @@ def tela_final():
             300
         )
 
+        # =========================
         # CONTROLES
+        # =========================
+
         texto_estilizado(
             "Pressione R para jogar novamente",
             fonte,
@@ -331,41 +420,87 @@ def tela_final():
             400
         )
 
-        # RANKING IGUAL AO MENU (com animação)
+        texto_estilizado(
+            "Pressione T para ver desempenho",
+            fonte,
+            (0,170,255),
+            PRETO,
+            PRETO,
+            centro_x - 220,
+            440
+        )
+
+        # =========================
+        # RANKING
+        # =========================
+
         scores = carregar_scores()
 
         x_base = 780
         y_base = 180
 
-        texto_estilizado("RANKING", fonte, (0,170,255), BRANCO, PRETO, x_base, y_base)
+        texto_estilizado(
+            "RANKING",
+            fonte,
+            (0,170,255),
+            BRANCO,
+            PRETO,
+            x_base,
+            y_base
+        )
 
         for i, s in enumerate(scores[:5]):
 
             delay = i * 12
-            progresso = max(0, min(1, (anim_tempo - delay) / 20))
+
+            progresso = max(
+                0,
+                min(
+                    1,
+                    (anim_tempo - delay) / 20
+                )
+            )
 
             x_final = x_base
             x_inicial = LARGURA + 100
-            x = x_inicial + (x_final - x_inicial) * progresso
+
+            x = x_inicial + (
+                x_final - x_inicial
+            ) * progresso
 
             y = y_base + 50 + i * 30
 
             if i == 0:
+
                 cor = (255,215,0)
+
                 texto = f"👑 1. {s['nome']} - {s['score']}"
+
             elif i == 1:
+
                 cor = (192,192,192)
+
                 texto = f"2. {s['nome']} - {s['score']}"
+
             elif i == 2:
+
                 cor = (205,127,50)
+
                 texto = f"3. {s['nome']} - {s['score']}"
+
             else:
+
                 cor = BRANCO
+
                 texto = f"{i+1}. {s['nome']} - {s['score']}"
 
             texto_estilizado(
                 texto,
-                pygame.font.SysFont("arial", 22, bold=True),
+                pygame.font.SysFont(
+                    "arial",
+                    22,
+                    bold=True
+                ),
                 cor,
                 PRETO,
                 PRETO,
@@ -375,7 +510,7 @@ def tela_final():
 
         pygame.display.flip()
 
-# LOOP (continua igual)
+# LOOP 
 rodando = True
 
 while rodando:
@@ -404,6 +539,9 @@ while rodando:
             if dado in ["A","D","G","K"]:
                 toque = dado
 
+    #tempo do jogador
+    tempo_jogador = pygame.time.get_ticks() if toque else None
+
     if not game_over_flag:
 
         contador += 1
@@ -424,6 +562,22 @@ while rodando:
                     pads[nota["inst"]]["anim"] = 8
 
                     if toque == nota["inst"]:
+
+                        #avaliação de tempo
+                        diferenca = tempo_jogador - nota["tempo_alvo"]
+
+                        # SALVA O TEMPO REAL DO INSTRUMENTO
+                        dados_tempo[nota["inst"]].append(diferenca)
+
+                        resultado_tempo = avaliar_tempo(diferenca)
+
+                        if resultado_tempo == "PERFEITO":
+                            acertos_perfeitos += 1
+                        elif resultado_tempo == "CEDO":
+                            cedo += 1
+                        elif resultado_tempo == "TARDE":
+                            tarde += 1
+
                         score += 100
                         combo += 1
                         erros_consecutivos = 0
@@ -441,15 +595,24 @@ while rodando:
                             feedback_texto = "INCRIVEL"
 
                     else:
+                        #erro registrado
+                        desempenho.append("ERRO")
+                        erros_tempo += 1
+
                         combo = 0
                         erros += 1
                         erros_consecutivos += 1
-                        nota["status"] = "erro"
+                        nota["status"] = "erro" 
                         feedback_texto = "PESSIMO" if erros_consecutivos >= 3 else "ERROU"
 
                     feedback_timer = 30
 
                 elif nota["x"] < LINHA_EXEC - 40:
+
+                    #erro por perder nota
+                    desempenho.append("ERRO")
+                    erros_tempo += 1
+
                     erros += 1
                     combo = 0
                     erros_consecutivos += 1
@@ -470,17 +633,56 @@ while rodando:
 
         resultado = tela_final()
 
+
+        # REINICIAR JOGO o jogo dará continuedade no loop midi entre cores de sequencia / piezos serão totalmente acoplados de forma sequencial
+
         if resultado == "reiniciar":
+
             notas.clear()
+
             score = 0
             combo = 0
             erros = 0
+
             contador = 0
+
             velocidade = 4
             spawn = 60
+
             game_over_flag = False
             score_salvo = False
+
             erros_consecutivos = 0
+
+            desempenho.clear()
+
+            acertos_perfeitos = 0
+            cedo = 0
+            tarde = 0
+            erros_tempo = 0
+
+            dados_tempo = {
+                "A": [],
+                "D": [],
+                "G": [],
+                "K": []
+            }
+
+            # RESET DE DESEMPENHO
+            desempenho.clear()
+
+            acertos_perfeitos = 0
+            cedo = 0
+            tarde = 0
+            erros_tempo = 0
+
+            # RESET DOS DADOS TEMPORAIS
+            dados_tempo = {
+                "A": [],
+                "D": [],
+                "G": [],
+                "K": []
+            }
 
     for y in linhas:
         pygame.draw.line(tela,(70,70,100),(0,y),(LARGURA,y),2)

@@ -1,310 +1,136 @@
+import os
+import sys
+import subprocess
 import pygame
-import serial
-import random
-
-# ===== SERIAL =====
-arduino = None
-try:
-    arduino = serial.Serial("COM3",9600)
-    arduino.timeout = 0.01
-except:
-    print("Arduino não conectado")
-
-# ===== PYGAME =====
-pygame.init()
-
-LARGURA = 700
-ALTURA = 600
-
-tela = pygame.display.set_mode((LARGURA,ALTURA))
-pygame.display.set_caption("Bateria Educacional")
-
-clock = pygame.time.Clock()
-
-fonte = pygame.font.SysFont("arial",36)
-fonte_grande = pygame.font.SysFont("arial",70)
-fonte_combo = pygame.font.SysFont("arial",50)
-
-# ===== CORES =====
-BRANCO = (255,255,255)
-PRETO = (10,10,18)
-AZUL = (0,140,255)
-AZUL_CLARO = (80,180,255)
-VERDE = (0,220,120)
-VERMELHO = (220,60,60)
-CINZA = (35,35,50)
 
-# ===== POSIÇÕES =====
-COLUNA_K = 220
-COLUNA_B = 420
-
-LARGURA_NOTA = 50
-ALTURA_NOTA = 20
-
-LINHA_ACERTO = 450
-
-# ===== VARIÁVEIS =====
-notas = []
-pontuacao = 0
-combo = 0
-vidas = 3
-velocidade = 5
-
-texto_feedback = ""
-tempo_feedback = 0
-
-pad_k_anim = 0
-pad_b_anim = 0
-
-# ===== REINICIAR =====
-def reiniciar_jogo():
-    global notas,pontuacao,combo,vidas,velocidade
-
-    notas = []
-    pontuacao = 0
-    combo = 0
-    vidas = 3
-    velocidade = 5
-
-# ===== CRIAR NOTA =====
-def criar_nota():
-
-    tipo = random.choice(["K","B"])
-
-    if tipo == "K":
-        x = COLUNA_K
-    else:
-        x = COLUNA_B
-
-    notas.append({
-        "tipo":tipo,
-        "x":x,
-        "y":-ALTURA_NOTA,
-        "estado":"normal",
-        "tempo_erro":15
-    })
-
-# ===== LOOP =====
-rodando = True
-contador = 0
-
-while rodando:
-
-    clock.tick(60)
-
-    # ===== FUNDO GRADIENTE =====
-    for y in range(ALTURA):
-        cor = (5,5+y//5,25+y//4)
-        pygame.draw.line(tela,cor,(0,y),(LARGURA,y))
-
-    # ===== EVENTOS =====
-    for evento in pygame.event.get():
-        if evento.type == pygame.QUIT:
-            rodando = False
-
-    # ===== COLUNAS =====
-    pygame.draw.rect(tela,CINZA,(COLUNA_K-25,0,100,ALTURA))
-    pygame.draw.rect(tela,AZUL,(COLUNA_K-25,0,100,ALTURA),2)
-
-    pygame.draw.rect(tela,CINZA,(COLUNA_B-25,0,100,ALTURA))
-    pygame.draw.rect(tela,AZUL,(COLUNA_B-25,0,100,ALTURA),2)
-
-    # ===== CRIAR NOTAS =====
-    contador += 1
-    if contador >= 45:
-        criar_nota()
-        contador = 0
-
-    # ===== LER ARDUINO =====
-    toque = None
-
-    if arduino and arduino.in_waiting > 0:
-        toque = arduino.readline().decode().strip()
-
-    # ===== LINHA DE ACERTO COM GLOW =====
-    pygame.draw.line(tela,(30,100,255),(0,LINHA_ACERTO),(LARGURA,LINHA_ACERTO),8)
-    pygame.draw.line(tela,AZUL_CLARO,(0,LINHA_ACERTO),(LARGURA,LINHA_ACERTO),3)
-
-    # ===== ATUALIZAR NOTAS =====
-    for nota in notas[:]:
-
-        if nota["estado"] == "normal":
-
-            nota["y"] += velocidade
-
-            if toque == nota["tipo"]:
-
-                distancia = abs(nota["y"]-LINHA_ACERTO)
-
-                if distancia < 10:
-                    pontuacao += 20+combo
-                    combo += 1
-                    texto_feedback = "PERFECT"
-
-                elif distancia < 25:
-                    pontuacao += 10+combo
-                    combo += 1
-                    texto_feedback = "GOOD"
-
-                elif distancia < 40:
-                    pontuacao += 5
-                    combo = 0
-                    texto_feedback = "OK"
-
-                else:
-                    texto_feedback = ""
-
-                if distancia < 40:
-
-                    tempo_feedback = 30
-
-                    if nota["tipo"] == "K":
-                        pad_k_anim = 10
-                    else:
-                        pad_b_anim = 10
-
-                    notas.remove(nota)
-                    continue
-
-            if nota["y"] > LINHA_ACERTO + 40:
-
-                nota["estado"] = "erro"
-
-                pontuacao = max(0,pontuacao-5)
-                combo = 0
-                vidas -= 1
-
-        else:
-
-            nota["tempo_erro"] -= 1
-
-            if nota["tempo_erro"] <= 0:
-                notas.remove(nota)
-                continue
-
-        if nota["estado"] == "erro":
-            cor = VERMELHO
-        else:
-            cor = AZUL_CLARO
-
-        # ===== BRILHO =====
-        pygame.draw.rect(
-            tela,
-            (20,20,20),
-            (nota["x"]-4,nota["y"]-4,LARGURA_NOTA+8,ALTURA_NOTA+8),
-            border_radius=8
-        )
-
-        # ===== NOTA =====
-        pygame.draw.rect(
-            tela,
-            cor,
-            (nota["x"],nota["y"],LARGURA_NOTA,ALTURA_NOTA),
-            border_radius=6
-        )
-
-        pygame.draw.rect(
-            tela,
-            BRANCO,
-            (nota["x"],nota["y"],LARGURA_NOTA,ALTURA_NOTA),
-            2,
-            border_radius=6
-        )
-
-    # ===== VELOCIDADE =====
-    velocidade = 5 + pontuacao*0.01
-
-    # ===== PADS ANIMADOS =====
-    raio_k = 30 + pad_k_anim
-    raio_b = 30 + pad_b_anim
-
-    pygame.draw.circle(tela,AZUL,(COLUNA_K+25,LINHA_ACERTO+70),raio_k)
-    pygame.draw.circle(tela,PRETO,(COLUNA_K+25,LINHA_ACERTO+70),raio_k-5)
-
-    pygame.draw.circle(tela,AZUL,(COLUNA_B+25,LINHA_ACERTO+70),raio_b)
-    pygame.draw.circle(tela,PRETO,(COLUNA_B+25,LINHA_ACERTO+70),raio_b-5)
-
-    if pad_k_anim > 0:
-        pad_k_anim -= 1
-
-    if pad_b_anim > 0:
-        pad_b_anim -= 1
-
-    tela.blit(fonte.render("KICK",True,BRANCO),(COLUNA_K-10,LINHA_ACERTO+110))
-    tela.blit(fonte.render("SNARE",True,BRANCO),(COLUNA_B-10,LINHA_ACERTO+110))
-
-    # ===== FEEDBACK =====
-    if tempo_feedback > 0:
-
-        feedback = fonte_grande.render(texto_feedback,True,VERDE)
-
-        tela.blit(
-            feedback,
-            (LARGURA//2 - feedback.get_width()//2,200)
-        )
-
-        tempo_feedback -= 1
-
-    # ===== COMBO GRANDE =====
-    if combo >= 5:
-
-        combo_txt = fonte_combo.render(f"COMBO x{combo}",True,AZUL_CLARO)
-
-        tela.blit(
-            combo_txt,
-            (LARGURA//2 - combo_txt.get_width()//2,120)
-        )
-
-    # ===== HUD =====
-    pygame.draw.rect(tela,(15,15,30),(0,0,LARGURA,80))
-
-    tela.blit(fonte.render(f"Pontos: {pontuacao}",True,BRANCO),(30,20))
-
-    # ===== VIDAS =====
-    for i in range(vidas):
-        pygame.draw.circle(tela,VERMELHO,(40+i*30,100),10)
-
-    # ===== GAME OVER =====
-    if vidas <= 0:
-
-        game_over = True
-
-        while game_over:
-
-            for evento in pygame.event.get():
-
-                if evento.type == pygame.QUIT:
-                    game_over = False
-                    rodando = False
-
-                if evento.type == pygame.KEYDOWN:
-
-                    if evento.key == pygame.K_r:
-                        reiniciar_jogo()
-                        game_over = False
-
-                    if evento.key == pygame.K_ESCAPE:
-                        game_over = False
-                        rodando = False
-
-            tela.fill((15,15,30))
-
-            titulo = fonte_grande.render("GAME OVER",True,VERMELHO)
-            tela.blit(titulo,(LARGURA//2 - titulo.get_width()//2,180))
-
-            score = fonte.render(f"Pontuação final: {pontuacao}",True,BRANCO)
-            tela.blit(score,(LARGURA//2 - score.get_width()//2,250))
-
-            pygame.draw.rect(tela,(40,120,40),(200,320,300,50),border_radius=10)
-            texto_r = fonte.render("R - Jogar novamente",True,BRANCO)
-            tela.blit(texto_r,(LARGURA//2 - texto_r.get_width()//2,335))
-
-            pygame.draw.rect(tela,(120,40,40),(200,390,300,50),border_radius=10)
-            texto_esc = fonte.render("ESC - Sair",True,BRANCO)
-            tela.blit(texto_esc,(LARGURA//2 - texto_esc.get_width()//2,405))
-
-            pygame.display.flip()
-
-    pygame.display.flip()
-
-pygame.quit()
+# Adiciona a pasta 'Telas' ao sys.path para garantir a resolução dos módulos importados pelo menu
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+TELAS_DIR = os.path.join(BASE_DIR, "Telas")
+if TELAS_DIR not in sys.path:
+    sys.path.insert(0, TELAS_DIR)
+
+from menu import menu
+
+def tela_escolha_nivel(tela, clock, nome_jogador):
+    LARGURA, ALTURA = 1100, 650
+    fonte_titulo = pygame.font.SysFont("arial", 60, bold=True)
+    fonte_sub = pygame.font.SysFont("arial", 28, bold=True)
+    fonte_opcoes = pygame.font.SysFont("arial", 26, bold=True)
+
+    BRANCO = (255, 255, 255)
+    PRETO = (0, 0, 0)
+    AMARELO = (255, 220, 0)
+    AZUL = (0, 170, 255)
+    VERDE = (0, 255, 120)
+    CINZA = (25, 25, 40)
+    BORDA_CINZA = (70, 70, 110)
+
+    def fundo():
+        for y in range(ALTURA):
+            cor = (5, 5 + y // 20, 15 + y // 18)
+            pygame.draw.line(tela, cor, (0, y), (LARGURA, y))
+
+    def texto_estilizado(txt, fonte, cor, borda, sombra, x, y):
+        render = fonte.render(txt, True, cor)
+        borda_render = fonte.render(txt, True, borda)
+        sombra_render = fonte.render(txt, True, sombra)
+        tela.blit(sombra_render, (x + 4, y + 4))
+        tela.blit(borda_render, (x + 2, y + 2))
+        tela.blit(render, (x, y))
+
+    escolha = None
+
+    while escolha is None:
+        clock.tick(60)
+        fundo()
+
+        # Barra Superior
+        barra = pygame.Surface((LARGURA, 90), pygame.SRCALPHA)
+        barra.fill((15, 15, 25, 220))
+        tela.blit(barra, (0, 0))
+        pygame.draw.line(tela, (60, 60, 90), (0, 90), (LARGURA, 90), 2)
+
+        # Título
+        titulo = "ESCOLHA O NÍVEL"
+        largura_t = fonte_titulo.size(titulo)[0]
+        texto_estilizado(titulo, fonte_titulo, AMARELO, PRETO, BRANCO, (LARGURA - largura_t) // 2, 90)
+
+        # Boas-vindas ao Jogador
+        texto_jogador = f"Bem-vindo(a), {nome_jogador}!"
+        largura_j = fonte_sub.size(texto_jogador)[0]
+        texto_estilizado(texto_jogador, fonte_sub, AZUL, PRETO, PRETO, (LARGURA - largura_j) // 2, 190)
+
+        # Painel de Opções
+        x_box = (LARGURA - 500) // 2
+
+        # Opção 1: Nível 1
+        pygame.draw.rect(tela, CINZA, (x_box, 260, 500, 65), border_radius=15)
+        pygame.draw.rect(tela, BORDA_CINZA, (x_box, 260, 500, 65), 2, border_radius=15)
+        texto_estilizado("1 - Nível 1 (Bateria Hero)", fonte_opcoes, VERDE, PRETO, PRETO, x_box + 30, 278)
+
+        # Opção 2: Nível 2
+        pygame.draw.rect(tela, CINZA, (x_box, 350, 500, 65), border_radius=15)
+        pygame.draw.rect(tela, BORDA_CINZA, (x_box, 350, 500, 65), 2, border_radius=15)
+        texto_estilizado("2 - Nível 2 (Partitura)", fonte_opcoes, AZUL, PRETO, PRETO, x_box + 30, 368)
+
+        # Opção ESC: Sair
+        pygame.draw.rect(tela, CINZA, (x_box, 440, 500, 65), border_radius=15)
+        pygame.draw.rect(tela, BORDA_CINZA, (x_box, 440, 500, 65), 2, border_radius=15)
+        texto_estilizado("ESC - Sair", fonte_opcoes, BRANCO, PRETO, PRETO, x_box + 30, 458)
+
+        pygame.display.flip()
+
+        for evento in pygame.event.get():
+            if evento.type == pygame.QUIT:
+                return "sair"
+            if evento.type == pygame.KEYDOWN:
+                if evento.key == pygame.K_1:
+                    escolha = "nivel1"
+                elif evento.key == pygame.K_2:
+                    escolha = "nivel2"
+                elif evento.key == pygame.K_ESCAPE:
+                    escolha = "sair"
+
+    return escolha
+
+def main():
+    # 1. Obter nome do jogador utilizando o menu de Telas/menu.py
+    nome_jogador = menu()
+
+    if not nome_jogador:
+        return
+
+    # 2. Inicializar contexto Pygame para a seleção de nível
+    pygame.init()
+    LARGURA, ALTURA = 1100, 650
+    tela = pygame.display.set_mode((LARGURA, ALTURA))
+    pygame.display.set_caption("Drum Trainer PRO - Escolha o Nível")
+    clock = pygame.time.Clock()
+
+    # 3. Loop de Seleção de Nível
+    while True:
+        opcao = tela_escolha_nivel(tela, clock, nome_jogador)
+
+        if opcao == "nivel1":
+            path_nivel1 = os.path.join(TELAS_DIR, "jogonivel1.py")
+            subprocess.run([sys.executable, path_nivel1], cwd=TELAS_DIR)
+            # Restaura a tela após encerramento do nível
+            pygame.init()
+            tela = pygame.display.set_mode((LARGURA, ALTURA))
+            pygame.display.set_caption("Drum Trainer PRO - Escolha o Nível")
+
+        elif opcao == "nivel2":
+            path_nivel2 = os.path.join(TELAS_DIR, "jogonivel2partitura.py")
+            subprocess.run([sys.executable, path_nivel2], cwd=TELAS_DIR)
+            # Restaura a tela após encerramento do nível
+            pygame.init()
+            tela = pygame.display.set_mode((LARGURA, ALTURA))
+            pygame.display.set_caption("Drum Trainer PRO - Escolha o Nível")
+
+        elif opcao == "sair":
+            break
+
+    pygame.quit()
+
+if __name__ == "__main__":
+    main()
