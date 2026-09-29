@@ -23,8 +23,10 @@ pygame.display.set_caption("Bateria Educacional")
 clock = pygame.time.Clock()
 
 fonte = pygame.font.SysFont("arial",36)
-fonte_grande = pygame.font.SysFont("arial",70)
+fonte_grande = pygame.font.SysFont("arial",60)
 fonte_combo = pygame.font.SysFont("arial",50)
+fonte_media = pygame.font.SysFont("arial",28)
+fonte_sub = pygame.font.SysFont("arial",22)
 
 # ===== CORES =====
 BRANCO = (255,255,255)
@@ -119,17 +121,39 @@ def tela_menu():
 
         tela.fill((10,10,20))
 
-        titulo = fonte_grande.render("BATERIA HERO",True,AZUL_CLARO)
-        tela.blit(titulo,(LARGURA//2 - titulo.get_width()//2,150))
+        # Título Nível 1
+        sub_nivel = fonte_media.render("NÍVEL 1", True, AZUL_CLARO)
+        tela.blit(sub_nivel, (LARGURA//2 - sub_nivel.get_width()//2, 35))
 
-        jogar = fonte.render("ENTER - Jogar",True,BRANCO)
-        tela.blit(jogar,(LARGURA//2 - jogar.get_width()//2,320))
+        titulo = fonte_grande.render("BATERIA HERO", True, BRANCO)
+        tela.blit(titulo, (LARGURA//2 - titulo.get_width()//2, 70))
 
-        dificuldade_txt = fonte.render("D - Dificuldade",True,BRANCO)
-        tela.blit(dificuldade_txt,(LARGURA//2 - dificuldade_txt.get_width()//2,360))
+        # Objetivo Pedagógico
+        obj_txt = fonte_sub.render("Objetivo: Aprender os primeiros ritmos da bateria", True, AZUL_CLARO)
+        tela.blit(obj_txt, (LARGURA//2 - obj_txt.get_width()//2, 145))
 
-        sair = fonte.render("ESC - Sair",True,BRANCO)
-        tela.blit(sair,(LARGURA//2 - sair.get_width()//2,400))
+        # Painel de Controles
+        pygame.draw.rect(tela, CINZA, (150, 190, 400, 120), border_radius=12)
+        pygame.draw.rect(tela, AZUL, (150, 190, 400, 120), 2, border_radius=12)
+
+        txt_ctrl = fonte_sub.render("Controles (Teclado):", True, AZUL_CLARO)
+        tela.blit(txt_ctrl, (170, 200))
+
+        txt_kick = fonte_sub.render("• KICK (Bumbo)   ->  Tecla K", True, BRANCO)
+        tela.blit(txt_kick, (180, 235))
+
+        txt_snare = fonte_sub.render("• SNARE (Caixa)  ->  Tecla S", True, BRANCO)
+        tela.blit(txt_snare, (180, 268))
+
+        # Opções do Menu
+        jogar = fonte_media.render("ENTER - Jogar", True, VERDE)
+        tela.blit(jogar, (LARGURA//2 - jogar.get_width()//2, 340))
+
+        dificuldade_txt = fonte_media.render("D - Dificuldade", True, BRANCO)
+        tela.blit(dificuldade_txt, (LARGURA//2 - dificuldade_txt.get_width()//2, 390))
+
+        sair = fonte_media.render("ESC - Sair", True, VERMELHO)
+        tela.blit(sair, (LARGURA//2 - sair.get_width()//2, 440))
 
         pygame.display.flip()
 
