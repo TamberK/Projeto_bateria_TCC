@@ -51,7 +51,7 @@ def tela_escolha_nivel(tela, clock, nome_jogador):
         pygame.draw.line(tela, (60, 60, 90), (0, 90), (LARGURA, 90), 2)
 
         # Título
-        titulo = "ESCOLHA O NÍVEL"
+        titulo = "ESCOLHA O MÓDULO"
         largura_t = fonte_titulo.size(titulo)[0]
         texto_estilizado(titulo, fonte_titulo, AMARELO, PRETO, BRANCO, (LARGURA - largura_t) // 2, 90)
 
@@ -66,12 +66,12 @@ def tela_escolha_nivel(tela, clock, nome_jogador):
         # Opção 1: Nível 1
         pygame.draw.rect(tela, CINZA, (x_box, 260, 500, 65), border_radius=15)
         pygame.draw.rect(tela, BORDA_CINZA, (x_box, 260, 500, 65), 2, border_radius=15)
-        texto_estilizado("1 - Nível 1 (Bateria Hero)", fonte_opcoes, VERDE, PRETO, PRETO, x_box + 30, 278)
+        texto_estilizado("1 - Módulo 1 (Bateria Hero)", fonte_opcoes, VERDE, PRETO, PRETO, x_box + 30, 278)
 
         # Opção 2: Nível 2
         pygame.draw.rect(tela, CINZA, (x_box, 350, 500, 65), border_radius=15)
         pygame.draw.rect(tela, BORDA_CINZA, (x_box, 350, 500, 65), 2, border_radius=15)
-        texto_estilizado("2 - Nível 2 (Partitura)", fonte_opcoes, AZUL, PRETO, PRETO, x_box + 30, 368)
+        texto_estilizado("2 - Módulo 2 (Partitura)", fonte_opcoes, AZUL, PRETO, PRETO, x_box + 30, 368)
 
         # Opção ESC: Sair
         pygame.draw.rect(tela, CINZA, (x_box, 440, 500, 65), border_radius=15)
@@ -104,7 +104,7 @@ def main():
     pygame.init()
     LARGURA, ALTURA = 1100, 650
     tela = pygame.display.set_mode((LARGURA, ALTURA))
-    pygame.display.set_caption("Drum Trainer PRO - Escolha o Nível")
+    pygame.display.set_caption("Drum Trainer PRO - Escolha o Módulo")
     clock = pygame.time.Clock()
 
     # 3. Loop de Seleção de Nível
@@ -117,7 +117,7 @@ def main():
             # Restaura a tela após encerramento do nível
             pygame.init()
             tela = pygame.display.set_mode((LARGURA, ALTURA))
-            pygame.display.set_caption("Drum Trainer PRO - Escolha o Nível")
+            pygame.display.set_caption("Drum Trainer PRO - Escolha o Módulo")
 
         elif opcao == "nivel2":
             path_nivel2 = os.path.join(TELAS_DIR, "jogonivel2partitura.py")
@@ -125,7 +125,7 @@ def main():
             # Restaura a tela após encerramento do nível
             pygame.init()
             tela = pygame.display.set_mode((LARGURA, ALTURA))
-            pygame.display.set_caption("Drum Trainer PRO - Escolha o Nível")
+            pygame.display.set_caption("Drum Trainer PRO - Escolha o Módulo")
 
         elif opcao == "sair":
             break
